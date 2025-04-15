@@ -1,0 +1,62 @@
+services:
+  psychology-service:
+    build: .
+    ports:
+      - "8002:8002"
+    environment:
+      - API_HOST=0.0.0.0
+      - API_PORT=8002
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/psychology_data
+      - LOG_LEVEL=INFO
+      - DEBUG=False
+      - SLEEP_SERVICE_URL=http://sleep-service:8001/api
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    networks:
+      - microservice-network
+
+  postgres:
+    image: postgres:14
+    ports:
+      - "5433:5432"  # Using 5433 to avoid conflict with sleep service's postgres
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=psychology_data
+    volumes:
+      - psychology-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - microservice-network
+
+  # Optional: Include pgAdmin for database management
+  pgadmin:
+    image: dpage/pgadmin4
+    ports:
+      - "5051:80"  # Using 5051 to avoid conflict with sleep service's pgadmin
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@psychologyservice.com
+      - PGADMIN_DEFAULT_PASSWORD=admin
+    volumes:
+      - psychology-pgadmin-data:/var/lib/pgadmin
+    depends_on:
+      - postgres
+    networks:
+      - microservice-network
+
+networks:
+  microservice-network:
+    driver: bridge
+    # For connecting with other services like sleep-service
+    # Use 'external: true' and set the name if you want to use an existing network
+    # external: true
+    # name: existing-network-name
+
+volumes:
+  psychology-postgres-data:
+  psychology-pgadmin-data:
