@@ -801,9 +801,9 @@ class ClusteringService:
             ]:
                 if trait in feature_names and trait in personality_traits:
                     features[trait] = (
-                        float(personality_traits[trait])
+                        float(personality_traits[trait]) / 100
                         if personality_traits[trait] is not None
-                        else 50.0
+                        else 0.5
                     )
 
         # Extract sleep preference features
