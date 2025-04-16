@@ -180,6 +180,12 @@ class ClusteringModelDB(Base):  # type: ignore
     user_assignments = relationship(
         "UserClusterAssignmentDB", back_populates="model", cascade="all, delete-orphan"
     )
+    # Fix this relationship to match the new column name
+    jobs = relationship(
+        "ClusteringJobDB",
+        back_populates="result_model",
+        foreign_keys="ClusteringJobDB.result_clustering_model_id",
+    )
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary."""
@@ -256,11 +262,16 @@ class ClusteringJobDB(Base):  # type: ignore
     completed_at = Column(DateTime, nullable=True)
     user_count = Column(Integer, nullable=True)
     error_message = Column(Text, nullable=True)
-    result_clustering_model_id = Column(String, nullable=True)
+    # Fix this column name to match the migration
+    result_clustering_model_id = Column(
+        String, ForeignKey("clustering_models.clustering_model_id"), nullable=True
+    )
+
+    # Fix this relationship to match the new column names
     result_model = relationship(
         "ClusteringModelDB",
+        back_populates="jobs",
         foreign_keys=[result_clustering_model_id],
-        uselist=False,
     )
 
     def to_dict(self) -> Dict[str, Any]:

@@ -1,7 +1,5 @@
 """Service for managing questionnaires and processing answers."""
 
-import ast
-import json
 import math
 import uuid
 from datetime import datetime
@@ -36,6 +34,61 @@ class QuestionnaireService:
         """
         self.storage = storage_service
         self.profile_service = ProfileService(storage_service)
+
+    def _prepare_for_db(self, obj):
+        """
+        Convert objects to database-friendly format.
+
+        Args:
+            obj: Object to prepare
+
+        Returns:
+            Database-friendly object
+        """
+        if isinstance(obj, dict):
+            return {k: self._prepare_for_db(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [self._prepare_for_db(item) for item in obj]
+        elif isinstance(obj, str) and self._is_iso_date(obj):
+            # Try to convert ISO format string to datetime for DB
+            try:
+                return datetime.fromisoformat(obj)
+            except (ValueError, TypeError):
+                return obj
+        elif hasattr(obj, "dict") and callable(getattr(obj, "dict")):
+            # Handle Pydantic models
+            return self._prepare_for_db(obj.dict())
+        else:
+            return obj
+
+    def _is_iso_date(self, date_str):
+        """
+        Check if a string looks like an ISO format date.
+
+        Args:
+            date_str: String to check
+
+        Returns:
+            True if it looks like an ISO date, False otherwise
+        """
+        if not isinstance(date_str, str):
+            return False
+
+        # Simple check for ISO format (YYYY-MM-DDThh:mm:ss)
+        parts = date_str.split("T")
+        if len(parts) != 2:
+            return False
+
+        date_part = parts[0]
+        time_part = parts[1]
+
+        if len(date_part.split("-")) != 3:
+            return False
+
+        if not time_part or ":" not in time_part:
+            return False
+
+        return True
 
     def _convert_is_active_to_str(self, is_active: Any) -> str:
         """Convert is_active to str."""
@@ -93,11 +146,9 @@ class QuestionnaireService:
             "title": questionnaire_data.title,
             "description": questionnaire_data.description,
             "questionnaire_type": questionnaire_data.questionnaire_type,
-            "questions": [
-                question.model_dump() for question in questionnaire_data.questions
-            ],
-            "created_at": now.isoformat(),
-            "updated_at": now.isoformat(),
+            "questions": [question.dict() for question in questionnaire_data.questions],
+            "created_at": now,
+            "updated_at": now,
             "version": "1.0.0",
             "is_active": True,
             "estimated_duration_minutes": questionnaire_data.estimated_duration_minutes,
@@ -118,12 +169,12 @@ class QuestionnaireService:
                 questionnaire_dict["questionnaire_type"]
             ),
             questions=questionnaire_data.questions,
-            created_at=datetime.fromisoformat(str(questionnaire_dict["created_at"])),
-            updated_at=datetime.fromisoformat(str(questionnaire_dict["updated_at"])),
+            created_at=questionnaire_dict["created_at"],  # type: ignore
+            updated_at=questionnaire_dict["updated_at"],  # type: ignore
             version=str(questionnaire_dict["version"]),
             is_active=bool(questionnaire_dict["is_active"]),
-            estimated_duration_minutes=int(
-                str(questionnaire_dict["estimated_duration_minutes"])
+            estimated_duration_minutes=int(  # type: ignore
+                questionnaire_dict["estimated_duration_minutes"]
             )
             if questionnaire_dict["estimated_duration_minutes"] is not None
             else None,
@@ -193,25 +244,24 @@ class QuestionnaireService:
         if questionnaire_update.description is not None:
             update_dict["description"] = str(questionnaire_update.description)
         if questionnaire_update.questions is not None:
-            update_dict["questions"] = json.dumps(
-                [q.model_dump() for q in questionnaire_update.questions]
-            )
-        update_dict["is_active"] = self._convert_is_active_to_str(
-            questionnaire_update.is_active
-        )
+            update_dict["questions"] = [
+                q.dict() for q in questionnaire_update.questions  # type: ignore
+            ]
+        if questionnaire_update.is_active is not None:
+            update_dict["is_active"] = questionnaire_update.is_active  # type: ignore
         if questionnaire_update.estimated_duration_minutes is not None:
-            update_dict["estimated_duration_minutes"] = str(
-                questionnaire_update.estimated_duration_minutes
-            )
+            update_dict[
+                "estimated_duration_minutes"
+            ] = questionnaire_update.estimated_duration_minutes  # type: ignore
         if questionnaire_update.tags is not None:
-            update_dict["tags"] = str(
-                self._convert_tags_to_list(questionnaire_update.tags)
-            )
+            update_dict["tags"] = self._convert_tags_to_list(
+                questionnaire_update.tags
+            )  # type: ignore
         if questionnaire_update.version is not None:
             update_dict["version"] = str(questionnaire_update.version)
 
         # Update timestamp
-        update_dict["updated_at"] = datetime.now().isoformat()
+        update_dict["updated_at"] = datetime.now()  # type: ignore
 
         # Merge with existing questionnaire
         updated_questionnaire = {**existing_questionnaire, **update_dict}
@@ -222,50 +272,7 @@ class QuestionnaireService:
             raise Exception("Failed to save updated questionnaire to storage")
 
         # Return updated questionnaire
-        try:
-            # Try to parse the questions as JSON
-            questions = json.loads(updated_questionnaire["questions"])
-        except (json.JSONDecodeError, TypeError):
-            # If parsing fails, use an empty list
-            questions = []
-
-        # Try to parse the tags
-        try:
-            # If tags is a string, try to parse it as a list
-            if isinstance(updated_questionnaire.get("tags"), str):
-                tags = ast.literal_eval(updated_questionnaire["tags"])
-            else:
-                tags = updated_questionnaire.get("tags")
-        except (ValueError, SyntaxError):
-            # If parsing fails, use None
-            tags = None
-
-        # Convert tags to list of strings if it's a list
-        if tags is not None and isinstance(tags, list):
-            tags = [str(tag) for tag in tags]
-        elif tags is not None:
-            # If tags is not a list, convert it to a list with a single element
-            tags = [str(tags)]
-
-        return Questionnaire(
-            questionnaire_id=str(updated_questionnaire["questionnaire_id"]),
-            title=str(updated_questionnaire["title"]),
-            description=str(updated_questionnaire["description"]),
-            questionnaire_type=QuestionnaireType(
-                updated_questionnaire["questionnaire_type"]
-            ),
-            questions=questions,
-            created_at=datetime.fromisoformat(str(updated_questionnaire["created_at"])),
-            updated_at=datetime.fromisoformat(str(updated_questionnaire["updated_at"])),
-            version=str(updated_questionnaire["version"]),
-            is_active=bool(updated_questionnaire["is_active"]),
-            estimated_duration_minutes=int(
-                str(updated_questionnaire["estimated_duration_minutes"])
-            )
-            if updated_questionnaire["estimated_duration_minutes"] is not None
-            else None,
-            tags=tags,
-        )
+        return Questionnaire(**updated_questionnaire)
 
     def delete_questionnaire(self, questionnaire_id: str) -> bool:
         """
@@ -326,7 +333,7 @@ class QuestionnaireService:
             "questionnaire_id": questionnaire_id,
             "status": QuestionnaireStatus.IN_PROGRESS,
             "answers": [],
-            "started_at": now.isoformat(),
+            "started_at": now,
             "current_page": 1,
             "total_pages": total_pages,
             "scored": False,
@@ -351,16 +358,8 @@ class QuestionnaireService:
             questionnaire_id=str(user_questionnaire_dict["questionnaire_id"]),
             status=QuestionnaireStatus(user_questionnaire_dict["status"]),
             answers=answers,
-            started_at=datetime.fromisoformat(
-                str(user_questionnaire_dict["started_at"])
-            )
-            if user_questionnaire_dict.get("started_at")
-            else None,
-            completed_at=datetime.fromisoformat(
-                str(user_questionnaire_dict["completed_at"])
-            )
-            if user_questionnaire_dict.get("completed_at")
-            else None,
+            started_at=user_questionnaire_dict["started_at"],  # type: ignore
+            completed_at=user_questionnaire_dict.get("completed_at"),  # type: ignore
             current_page=int(user_questionnaire_dict["current_page"]),  # type: ignore
             total_pages=int(user_questionnaire_dict["total_pages"]),  # type: ignore
             scored=bool(user_questionnaire_dict["scored"]),
@@ -522,9 +521,7 @@ class QuestionnaireService:
             answer_dict = {
                 "question_id": answer.question_id,
                 "value": answer.value,
-                "answered_at": answer.answered_at.isoformat()
-                if isinstance(answer.answered_at, datetime)
-                else answer.answered_at,
+                "answered_at": answer.answered_at,
             }
 
             # Replace existing answer or add new one
@@ -577,7 +574,7 @@ class QuestionnaireService:
 
         # Update user questionnaire
         user_questionnaire["status"] = QuestionnaireStatus.COMPLETED
-        user_questionnaire["completed_at"] = datetime.now().isoformat()
+        user_questionnaire["completed_at"] = datetime.now()
         user_questionnaire["scored"] = True
         user_questionnaire["score_results"] = score_results
 

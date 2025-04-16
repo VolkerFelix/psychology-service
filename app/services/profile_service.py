@@ -2,6 +2,7 @@
 
 import uuid
 from datetime import datetime
+from enum import Enum
 from typing import Any, Dict, List, Optional
 
 from app.models.profile_models import (
@@ -22,6 +23,30 @@ class ProfileService:
     def __init__(self, storage_service):
         """Initialize with a storage service."""
         self.storage = storage_service
+
+    def _prepare_for_db(self, obj):
+        """
+        Convert objects to database-friendly format.
+
+        Args:
+            obj: Object to prepare
+
+        Returns:
+            Database-friendly object
+        """
+        if isinstance(obj, dict):
+            return {k: self._prepare_for_db(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [self._prepare_for_db(item) for item in obj]
+        elif isinstance(obj, datetime):
+            return obj.isoformat()
+        elif isinstance(obj, Enum):
+            return obj.value
+        elif hasattr(obj, "dict") and callable(getattr(obj, "dict")):
+            # Handle Pydantic models
+            return self._prepare_for_db(obj.dict())
+        else:
+            return obj
 
     def create_profile(self, profile_data: ProfileCreate) -> PsychologicalProfile:
         """
@@ -85,8 +110,12 @@ class ProfileService:
             cluster_info=None,
         )
 
+        # First convert to dict and then prepare for storage
+        profile_dict = profile.dict()
+        db_profile = self._prepare_for_db(profile_dict)
+
         # Save to storage
-        success = self.storage.save_profile(profile.dict())
+        success = self.storage.save_profile(db_profile)
         if not success:
             raise Exception("Failed to save profile to storage")
 
@@ -143,36 +172,90 @@ class ProfileService:
         if not existing_profile:
             return None
 
-        # Build update dictionary (only non-None fields)
-        update_dict = {}
+        # Create a deep copy of the existing profile for updates
+        updated_profile = dict(existing_profile)
+
+        # Handle personality_traits update
         if profile_update.personality_traits:
-            update_dict["personality_traits"] = profile_update.personality_traits.dict()
+            # Make sure personality_traits exists in the profile
+            if "personality_traits" not in updated_profile:
+                updated_profile["personality_traits"] = {}
+
+            # Update individual traits without losing existing ones
+            traits_update = profile_update.personality_traits.dict(exclude_unset=True)
+            for key, value in traits_update.items():
+                if value is not None:  # Only update non-None values
+                    updated_profile["personality_traits"][key] = value
+
+            # Recalculate dominant traits with the updated values
+            self._calculate_dominant_traits(updated_profile)
+
+        # Handle sleep_preferences update
         if profile_update.sleep_preferences:
-            update_dict["sleep_preferences"] = profile_update.sleep_preferences.dict()
+            # Make sure sleep_preferences exists in the profile
+            if "sleep_preferences" not in updated_profile:
+                updated_profile["sleep_preferences"] = {}
+
+            # Update individual preferences without losing existing ones
+            prefs_update = profile_update.sleep_preferences.dict(exclude_unset=True)
+            for key, value in prefs_update.items():
+                if value is not None:  # Only update non-None values
+                    updated_profile["sleep_preferences"][key] = value
+
+        # Handle behavioral_patterns update
         if profile_update.behavioral_patterns:
-            update_dict[
-                "behavioral_patterns"
-            ] = profile_update.behavioral_patterns.dict()
-        if profile_update.raw_scores:
-            update_dict["raw_scores"] = profile_update.raw_scores
-        if profile_update.profile_metadata:
-            update_dict["profile_metadata"] = profile_update.profile_metadata.dict()
+            # Make sure behavioral_patterns exists in the profile
+            if "behavioral_patterns" not in updated_profile:
+                updated_profile["behavioral_patterns"] = {}
 
-        # Update timestamps
-        if "profile_metadata" not in update_dict:
-            update_dict["profile_metadata"] = existing_profile.get(
-                "profile_metadata", {}
+            # Update individual patterns without losing existing ones
+            patterns_update = profile_update.behavioral_patterns.dict(
+                exclude_unset=True
             )
-        update_dict["profile_metadata"]["updated_at"] = datetime.now().isoformat()
+            for key, value in patterns_update.items():
+                if value is not None:  # Only update non-None values
+                    updated_profile["behavioral_patterns"][key] = value
 
-        # Update completeness if not already set
-        self._update_profile_completeness(existing_profile, update_dict)
+        # Handle raw_scores update
+        if profile_update.raw_scores:
+            # Make sure raw_scores exists in the profile
+            if "raw_scores" not in updated_profile:
+                updated_profile["raw_scores"] = {}
 
-        # Merge with existing profile
-        updated_profile = {**existing_profile, **update_dict}
+            # Update raw scores
+            updated_profile["raw_scores"].update(profile_update.raw_scores)
+
+        # Handle profile_metadata update
+        if profile_update.profile_metadata:
+            # Make sure profile_metadata exists in the profile
+            if "profile_metadata" not in updated_profile:
+                updated_profile["profile_metadata"] = {}
+
+            # Update profile metadata
+            metadata_update = profile_update.profile_metadata.dict(exclude_unset=True)
+            for key, value in metadata_update.items():
+                if value is not None:  # Only update non-None values
+                    updated_profile["profile_metadata"][key] = value
+
+        # Update timestamp
+        if "profile_metadata" not in updated_profile:
+            updated_profile["profile_metadata"] = {}
+        updated_profile["profile_metadata"]["updated_at"] = datetime.now().isoformat()
+
+        # Update completeness based on the current state
+        updates = {}  # type: ignore
+        self._update_profile_completeness(updated_profile, updates)
+
+        # Apply completeness updates
+        if "profile_metadata" in updates:
+            for key, value in updates["profile_metadata"].items():
+                updated_profile["profile_metadata"][key] = value
+
+        # Prepare data for database
+        db_profile = self._prepare_for_db(updated_profile)
 
         # Save to storage
-        success = self.storage.save_profile(updated_profile)
+        success = self.storage.save_profile(db_profile)
         if not success:
             raise Exception("Failed to save updated profile to storage")
 
@@ -237,10 +320,10 @@ class ProfileService:
                 "personality_traits": {},
                 "sleep_preferences": {},
                 "behavioral_patterns": {},
-                "metadata": {
+                "profile_metadata": {
                     "created_at": datetime.now().isoformat(),
                     "updated_at": datetime.now().isoformat(),
-                    "completeness": ProfileCompleteness.PARTIAL,
+                    "completeness": "not_started",
                     "completion_percentage": 0,
                     "questions_answered": 0,
                     "source": "questionnaire",
@@ -260,22 +343,25 @@ class ProfileService:
         self._update_profile_from_scores(profile, questionnaire_results)
 
         # Update metadata
-        if "metadata" not in profile:
-            profile["metadata"] = {}
+        if "profile_metadata" not in profile:
+            profile["profile_metadata"] = {}
 
-        profile["metadata"]["updated_at"] = datetime.now().isoformat()
-        profile["metadata"]["source"] = "questionnaire"
+        profile["profile_metadata"]["updated_at"] = datetime.now().isoformat()
+        profile["profile_metadata"]["source"] = "questionnaire"
 
         if "questions_answered" in questionnaire_results:
-            profile["metadata"]["questions_answered"] = profile["metadata"].get(
+            profile["profile_metadata"]["questions_answered"] = profile[
+                "profile_metadata"
+            ].get("questions_answered", 0) + questionnaire_results.get(
                 "questions_answered", 0
-            ) + questionnaire_results.get("questions_answered", 0)
+            )
 
         # Update completeness
         self._update_profile_completeness(profile, {})
 
-        # Save to storage
-        success = self.storage.save_profile(profile)
+        # Save to storage - Make sure all data is serialized
+        prepared_profile = self._prepare_for_db(profile)
+        success = self.storage.save_profile(prepared_profile)
         if not success:
             raise Exception("Failed to save profile updated from questionnaire")
 
@@ -386,14 +472,14 @@ class ProfileService:
         """
         # Combine profile with updates for calculation
         combined = {**profile}
-        if "metadata" in updates:
-            combined["metadata"] = {
-                **(combined.get("metadata") or {}),
-                **updates["metadata"],
+        if "profile_metadata" in updates:
+            combined["profile_metadata"] = {
+                **(combined.get("profile_metadata") or {}),
+                **updates["profile_metadata"],
             }
 
         # Get metadata
-        metadata = combined.get("metadata", {})
+        metadata = combined.get("profile_metadata", {})
 
         # Check completeness of each section
         completeness_checks = {
@@ -435,11 +521,11 @@ class ProfileService:
 
         # Determine completeness status
         if completion_percentage < 10:
-            completeness = ProfileCompleteness.NOT_STARTED
+            completeness = ProfileCompleteness.NOT_STARTED.value
         elif completion_percentage < 80:
-            completeness = ProfileCompleteness.PARTIAL
+            completeness = ProfileCompleteness.PARTIAL.value
         else:
-            completeness = ProfileCompleteness.COMPLETE
+            completeness = ProfileCompleteness.COMPLETE.value
 
         # Set validity
         min_questions = 15  # Minimum questions for a valid profile
@@ -447,12 +533,12 @@ class ProfileService:
         valid = questions_answered >= min_questions and completion_percentage >= 60
 
         # Update metadata
-        if "metadata" not in updates:
-            updates["metadata"] = {}
+        if "profile_metadata" not in updates:
+            updates["profile_metadata"] = {}
 
-        updates["metadata"]["completion_percentage"] = completion_percentage
-        updates["metadata"]["completeness"] = completeness
-        updates["metadata"]["valid"] = valid
+        updates["profile_metadata"]["completion_percentage"] = completion_percentage
+        updates["profile_metadata"]["completeness"] = completeness
+        updates["profile_metadata"]["valid"] = valid
 
     @staticmethod
     def _check_section_completeness(
