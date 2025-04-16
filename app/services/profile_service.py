@@ -411,8 +411,50 @@ class ProfileService:
                 if category not in profile:
                     profile[category] = {}
 
-                # Update field with score
-                profile[category][field] = score
+                # Handle special cases for enum fields
+                if field == "chronotype":
+                    # Convert numeric score to chronotype enum value
+                    if isinstance(score, (int, float)):
+                        if score < 0.25:
+                            profile[category][field] = "morning_person"
+                        elif score < 0.75:
+                            profile[category][field] = "intermediate"
+                        else:
+                            profile[category][field] = "evening_person"
+                    else:
+                        # If not numeric, use as is (should be a string)
+                        profile[category][field] = score
+                elif field == "environment_preference":
+                    # Convert numeric score to environment preference enum value
+                    if isinstance(score, (int, float)):
+                        if score < 0.25:
+                            profile[category][field] = "dark_quiet"
+                        elif score < 0.5:
+                            profile[category][field] = "some_light"
+                        elif score < 0.75:
+                            profile[category][field] = "some_noise"
+                        else:
+                            profile[category][field] = "noise_and_light"
+                    else:
+                        # If not numeric, use as is (should be a string)
+                        profile[category][field] = score
+                elif field == "stress_response":
+                    # Convert numeric score to stress response enum value
+                    if isinstance(score, (int, float)):
+                        if score < 0.25:
+                            profile[category][field] = "problem_focused"
+                        elif score < 0.5:
+                            profile[category][field] = "emotion_focused"
+                        elif score < 0.75:
+                            profile[category][field] = "avoidant"
+                        else:
+                            profile[category][field] = "social_support"
+                    else:
+                        # If not numeric, use as is (should be a string)
+                        profile[category][field] = score
+                else:
+                    # For numeric fields, just assign the score
+                    profile[category][field] = score
 
         # Calculate dominant traits for personality if we have enough data
         self._calculate_dominant_traits(profile)
