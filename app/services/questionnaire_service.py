@@ -518,10 +518,21 @@ class QuestionnaireService:
         question_ids = [a.get("question_id") for a in current_answers]
 
         for answer in answer_submission.answers:
+            # Ensure answered_at is a string
+            answered_at = answer.answered_at
+            if isinstance(answered_at, datetime):
+                answered_at = answered_at.isoformat()  # type: ignore
+            elif isinstance(answered_at, str) and self._is_iso_date(answered_at):
+                # Already in ISO format, keep as is
+                pass
+            else:
+                # Default to current time if not a valid datetime
+                answered_at = datetime.now().isoformat()
+
             answer_dict = {
                 "question_id": answer.question_id,
                 "value": answer.value,
-                "answered_at": answer.answered_at,
+                "answered_at": answered_at,
             }
 
             # Replace existing answer or add new one

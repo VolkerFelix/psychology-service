@@ -666,6 +666,37 @@ class DatabaseStorage:
                 user_questionnaire_id = str(uuid.uuid4())
                 user_questionnaire_data["user_questionnaire_id"] = user_questionnaire_id
 
+            # Serialize datetime objects in answers
+            if "answers" in user_questionnaire_data:
+                for answer in user_questionnaire_data["answers"]:
+                    if "answered_at" in answer and isinstance(
+                        answer["answered_at"], datetime
+                    ):
+                        answer["answered_at"] = answer["answered_at"].isoformat()
+
+            # Convert string dates to datetime objects for database fields
+            if "started_at" in user_questionnaire_data and isinstance(
+                user_questionnaire_data["started_at"], str
+            ):
+                try:
+                    user_questionnaire_data["started_at"] = datetime.fromisoformat(
+                        user_questionnaire_data["started_at"]
+                    )
+                except (ValueError, TypeError):
+                    # If conversion fails, use current time
+                    user_questionnaire_data["started_at"] = datetime.now()
+
+            if "completed_at" in user_questionnaire_data and isinstance(
+                user_questionnaire_data["completed_at"], str
+            ):
+                try:
+                    user_questionnaire_data["completed_at"] = datetime.fromisoformat(
+                        user_questionnaire_data["completed_at"]
+                    )
+                except (ValueError, TypeError):
+                    # If conversion fails, use current time
+                    user_questionnaire_data["completed_at"] = datetime.now()
+
             existing = (
                 session.query(UserQuestionnaireDB)
                 .filter(
