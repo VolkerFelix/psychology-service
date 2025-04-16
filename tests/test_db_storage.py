@@ -440,15 +440,15 @@ class TestDatabaseStorage:
                     "size": 10,
                     "centroid": {"dim_0": 0.7, "dim_1": 0.3},
                     "key_features": [],
-                    "created_at": now.isoformat(),
-                    "updated_at": now.isoformat(),
+                    "created_at": now,
+                    "updated_at": now,
                     "version": "1.0.0",
                     "is_active": True,
                     "tags": [],
                 }
             ],
-            "created_at": now.isoformat(),
-            "updated_at": now.isoformat(),
+            "created_at": now,
+            "updated_at": now,
             "version": "1.0.0",
             "is_active": True,
             "total_users_clustered": 50,
@@ -480,6 +480,7 @@ class TestDatabaseStorage:
     def test_save_user_cluster_assignment(self):
         """Test saving a user cluster assignment to the database."""
         # First save a clustering model
+        now = datetime.now()
         model_data = {
             "clustering_model_id": self.model_id,
             "name": "Test Model",
@@ -496,15 +497,15 @@ class TestDatabaseStorage:
                     "size": 10,
                     "centroid": {"dim_0": 0.7, "dim_1": 0.3},
                     "key_features": [],
-                    "created_at": datetime.now().isoformat(),
-                    "updated_at": datetime.now().isoformat(),
+                    "created_at": now,
+                    "updated_at": now,
                     "version": "1.0.0",
                     "is_active": True,
                     "tags": [],
                 }
             ],
-            "created_at": datetime.now().isoformat(),
-            "updated_at": datetime.now().isoformat(),
+            "created_at": now,
+            "updated_at": now,
             "version": "1.0.0",
             "is_active": True,
             "total_users_clustered": 50,
@@ -522,7 +523,7 @@ class TestDatabaseStorage:
             "confidence_score": 0.85,
             "features": {"openness": 0.7, "conscientiousness": 0.8},
             "distance_to_centroid": 0.25,
-            "assigned_at": datetime.now().isoformat(),
+            "assigned_at": now,
             "is_current": True,
         }
 
@@ -550,6 +551,7 @@ class TestDatabaseStorage:
 
     def test_save_clustering_job(self):
         """Test saving a clustering job to the database."""
+        now = datetime.now()
         # Create test job data
         job_data = {
             "job_id": self.job_id,
@@ -558,7 +560,7 @@ class TestDatabaseStorage:
             "status": "pending",
             "algorithm": "kmeans",
             "parameters": {"n_clusters": 3},
-            "created_at": datetime.now().isoformat(),
+            "created_at": now,
         }
 
         # Save job
@@ -579,6 +581,7 @@ class TestDatabaseStorage:
 
     def test_get_clustering_job(self):
         """Test retrieving a clustering job by ID."""
+        now = datetime.now()
         # Create and save a job
         job_data = {
             "job_id": self.job_id,
@@ -587,7 +590,7 @@ class TestDatabaseStorage:
             "status": "pending",
             "algorithm": "kmeans",
             "parameters": {"n_clusters": 3},
-            "created_at": datetime.now().isoformat(),
+            "created_at": now,
         }
         self.storage.save_clustering_job(job_data)
 

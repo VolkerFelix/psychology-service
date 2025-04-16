@@ -407,7 +407,7 @@ class TestProfileService:
             "personality_traits": {"openness": 70.0},
             "sleep_preferences": {},
             "behavioral_patterns": {},
-            "metadata": {
+            "profile_metadata": {
                 "questions_answered": 3,
             },
         }
@@ -415,12 +415,14 @@ class TestProfileService:
         self.service._update_profile_completeness(profile, updates)
 
         # Verify
-        assert "metadata" in updates
-        assert "completeness" in updates["metadata"]
-        assert "completion_percentage" in updates["metadata"]
-        assert "valid" in updates["metadata"]
-        assert updates["metadata"]["completion_percentage"] < 50  # Low completion
-        assert not updates["metadata"]["valid"]  # Not valid with so little data
+        assert "profile_metadata" in updates
+        assert "completeness" in updates["profile_metadata"]
+        assert "completion_percentage" in updates["profile_metadata"]
+        assert "valid" in updates["profile_metadata"]
+        assert (
+            updates["profile_metadata"]["completion_percentage"] < 50
+        )  # Low completion
+        assert not updates["profile_metadata"]["valid"]  # Not valid with so little data
 
         # Test with more complete profile
         profile = {
@@ -441,7 +443,7 @@ class TestProfileService:
                 "routine_consistency": 8,
                 "social_activity_preference": 6,
             },
-            "metadata": {
+            "profile_metadata": {
                 "questions_answered": 20,
             },
         }
@@ -449,5 +451,7 @@ class TestProfileService:
         self.service._update_profile_completeness(profile, updates)
 
         # Verify
-        assert updates["metadata"]["completion_percentage"] > 80  # High completion
-        assert updates["metadata"]["valid"]  # Valid with comprehensive data
+        assert (
+            updates["profile_metadata"]["completion_percentage"] > 80
+        )  # High completion
+        assert updates["profile_metadata"]["valid"]  # Valid with comprehensive data

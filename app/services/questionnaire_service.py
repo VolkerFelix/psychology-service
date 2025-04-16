@@ -705,6 +705,14 @@ class QuestionnaireService:
                     if not dimension:
                         continue
 
+                    # Convert dimension to string if it's an enum,
+                    # using only the value name
+                    dimension_str = (
+                        dimension.value.lower()
+                        if hasattr(dimension, "value")
+                        else str(dimension).lower()
+                    )
+
                     # Get score based on question type
                     score = self._calculate_question_score(question, value)
 
@@ -713,12 +721,12 @@ class QuestionnaireService:
                     weighted_score = score * weight
 
                     # Add to dimension totals
-                    if dimension not in dimension_scores:
-                        dimension_scores[dimension] = 0
-                        dimension_counts[dimension] = 0
+                    if dimension_str not in dimension_scores:
+                        dimension_scores[dimension_str] = 0
+                        dimension_counts[dimension_str] = 0
 
-                    dimension_scores[dimension] += weighted_score
-                    dimension_counts[dimension] += weight
+                    dimension_scores[dimension_str] += weighted_score
+                    dimension_counts[dimension_str] += weight
 
         # Calculate average for each dimension
         processed_dimensions = {}
@@ -749,7 +757,10 @@ class QuestionnaireService:
         Returns:
             Score as a float (typically 0-1 range)
         """
-        question_type = question.get("type")
+        # Get question type, handling both enum and string values
+        question_type = question.get("question_type", question.get("type", "")).lower()
+        if hasattr(question_type, "value"):
+            question_type = question_type.value.lower()
 
         if question_type == "likert_5":
             # Assuming values 1-5, normalize to 0-1
@@ -763,11 +774,21 @@ class QuestionnaireService:
             # Look up the selected option
             options = question.get("options", [])
             for option in options:
-                if option.get("id") == value:
+                # Check if the value matches either the option_id or the option itself
+                if option.get("id") == value or option.get("option_id") == value:
                     # Return the option's value or default to 0
                     option_value = option.get("value")
                     if isinstance(option_value, (int, float)):
                         return float(option_value)
+                    # If the value is a string like "early",
+                    # "medium", "late", map to numeric values
+                    elif isinstance(option_value, str):
+                        if option_value == "early":
+                            return 0.2  # Low value for early bedtime
+                        elif option_value == "medium":
+                            return 0.5  # Medium value for medium bedtime
+                        elif option_value == "late":
+                            return 0.8  # High value for late bedtime
             return 0.0
 
         elif question_type == "slider":
@@ -835,9 +856,15 @@ class QuestionnaireService:
                 # Keep as is - already on 0-100 scale
                 pass
 
-        elif dimension in ["routine_consistency", "sleep_environment"]:
+        elif dimension == "routine_consistency":
+            # For routine consistency, use 0-10 scale and round to integer
+            normalized = round(max(0, min(10, normalized / 10)))
+
+        elif dimension in ["sleep_environment"]:
             # These might use different scales, normalize to 0-100
             normalized = max(0, min(100, normalized))
 
-        # Round to one decimal place
-        return round(normalized, 1)
+        # Round to one decimal place for non-integer fields
+        if dimension != "routine_consistency":
+            normalized = round(normalized, 1)
+        return normalized

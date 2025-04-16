@@ -58,7 +58,7 @@ class TestQuestionnaireService:
                 description="Rate how much you agree with this statement",
                 question_type=QuestionType.LIKERT_5,
                 category=QuestionCategory.BEHAVIOR,
-                dimensions=[PersonalityDimension.CONSCIENTIOUSNESS],
+                dimensions=["routine_consistency"],
                 required=True,
             ),
             Question(
@@ -67,7 +67,7 @@ class TestQuestionnaireService:
                 description="Select the time you prefer to go to sleep",
                 question_type=QuestionType.MULTIPLE_CHOICE,
                 category=QuestionCategory.SLEEP,
-                dimensions=[PersonalityDimension.OPENNESS],
+                dimensions=["chronotype"],
                 options=[
                     QuestionOption(
                         option_id="opt1", text="Before 10 PM", value="early"
