@@ -227,6 +227,7 @@ class TestDatabaseStorage:
     def test_save_questionnaire(self):
         """Test saving a questionnaire to the database."""
         # Create test questionnaire data
+        now = datetime.now()
         questionnaire_data = {
             "questionnaire_id": self.questionnaire_id,
             "title": "Test Questionnaire",
@@ -243,8 +244,8 @@ class TestDatabaseStorage:
                     "required": True,
                 }
             ],
-            "created_at": datetime.now().isoformat(),
-            "updated_at": datetime.now().isoformat(),
+            "created_at": now,
+            "updated_at": now,
             "version": "1.0.0",
             "is_active": True,
             "estimated_duration_minutes": 5,
