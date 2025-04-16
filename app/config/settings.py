@@ -59,12 +59,12 @@ class Settings(BaseSettings):
     CLUSTER_REFRESH_INTERVAL_HOURS: int = 24
     MIN_USERS_FOR_CLUSTERING: int = 10
 
-    class Config:
-        """Configuration for the settings."""
-
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        case_sensitive = True
+    # Pydantic v2 configuration
+    model_config = {
+        "env_file": ".env",
+        "env_file_encoding": "utf-8",
+        "case_sensitive": True,
+    }
 
 
 # Create an instance of the settings
