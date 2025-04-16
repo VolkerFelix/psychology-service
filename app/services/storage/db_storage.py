@@ -814,6 +814,20 @@ class DatabaseStorage:
                 model_id = str(uuid.uuid4())
                 model_data["clustering_model_id"] = model_id
 
+            # Convert datetime objects to ISO format strings
+            if isinstance(model_data.get("created_at"), datetime):
+                model_data["created_at"] = model_data["created_at"].isoformat()
+            if isinstance(model_data.get("updated_at"), datetime):
+                model_data["updated_at"] = model_data["updated_at"].isoformat()
+
+            # Convert datetime objects in clusters
+            if "clusters" in model_data:
+                for cluster in model_data["clusters"]:
+                    if isinstance(cluster.get("created_at"), datetime):
+                        cluster["created_at"] = cluster["created_at"].isoformat()
+                    if isinstance(cluster.get("updated_at"), datetime):
+                        cluster["updated_at"] = cluster["updated_at"].isoformat()
+
             existing = (
                 session.query(ClusteringModelDB)
                 .filter(ClusteringModelDB.clustering_model_id == model_id)

@@ -275,6 +275,7 @@ class TestDatabaseStorage:
     def test_get_questionnaire(self):
         """Test retrieving a questionnaire by ID."""
         # Create and save a questionnaire
+        now = datetime.now()
         questionnaire_data = {
             "questionnaire_id": self.questionnaire_id,
             "title": "Test Questionnaire",
@@ -291,8 +292,8 @@ class TestDatabaseStorage:
                     "required": True,
                 }
             ],
-            "created_at": datetime.now().isoformat(),
-            "updated_at": datetime.now().isoformat(),
+            "created_at": now,
+            "updated_at": now,
             "version": "1.0.0",
             "is_active": True,
             "estimated_duration_minutes": 5,
@@ -422,6 +423,7 @@ class TestDatabaseStorage:
     def test_save_clustering_model(self):
         """Test saving a clustering model to the database."""
         # Create test model data
+        now = datetime.now()
         model_data = {
             "clustering_model_id": self.model_id,
             "name": "Test Model",
@@ -438,15 +440,15 @@ class TestDatabaseStorage:
                     "size": 10,
                     "centroid": {"dim_0": 0.7, "dim_1": 0.3},
                     "key_features": [],
-                    "created_at": datetime.now().isoformat(),
-                    "updated_at": datetime.now().isoformat(),
+                    "created_at": now.isoformat(),
+                    "updated_at": now.isoformat(),
                     "version": "1.0.0",
                     "is_active": True,
                     "tags": [],
                 }
             ],
-            "created_at": datetime.now().isoformat(),
-            "updated_at": datetime.now().isoformat(),
+            "created_at": now.isoformat(),
+            "updated_at": now.isoformat(),
             "version": "1.0.0",
             "is_active": True,
             "total_users_clustered": 50,
