@@ -118,7 +118,7 @@ The service evaluates profiles based on several key psychological dimensions:
 
 This microservice is designed to work alongside a sleep data tracking service. To enable full functionality:
 
-1. Set the `SLEEP_SERVICE_URL` environment variable to point to your sleep data microservice
+1. Set the `PSYCHOLOGY_SERVICE_URL` environment variable to point to your sleep data microservice
 2. Ensure proper CORS configuration to allow communication between services
 3. Use shared user IDs between services for profile correlation
 

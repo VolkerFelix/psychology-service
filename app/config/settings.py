@@ -34,7 +34,9 @@ class Settings(BaseSettings):
     )
 
     # Sleep Data Service
-    SLEEP_SERVICE_URL: str = os.getenv("SLEEP_SERVICE_URL", "http://localhost:8001/api")
+    PSYCHOLOGY_SERVICE_URL: str = os.getenv(
+        "PSYCHOLOGY_SERVICE_URL", "http://localhost:8001/api"
+    )
 
     # Authentication
     JWT_SECRET_KEY: str = os.getenv(

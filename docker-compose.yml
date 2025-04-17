@@ -9,7 +9,8 @@ services:
       - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/psychology_data
       - LOG_LEVEL=INFO
       - DEBUG=False
-      - SLEEP_SERVICE_URL=http://sleep-service:8001/api
+      - PERSONALITY_SERVICE_URL=http://personality-service:8001/api
+    entrypoint: ["/app/entrypoint.sh"]
     restart: unless-stopped
     depends_on:
       - postgres
@@ -19,7 +20,7 @@ services:
   postgres:
     image: postgres:14
     ports:
-      - "5433:5432"  # Using 5433 to avoid conflict with sleep service's postgres
+      - "5432:5432"  # Using 5433 to avoid conflict with sleep service's postgres
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres

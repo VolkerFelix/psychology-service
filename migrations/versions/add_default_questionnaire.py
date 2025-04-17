@@ -14,6 +14,7 @@ import uuid
 from datetime import datetime
 
 from alembic import op
+from sqlalchemy import text
 
 # revision identifiers, used by Alembic.
 revision = "003"
@@ -312,51 +313,36 @@ def upgrade() -> None:
     # Combine all questions
     questions = personality_questions + sleep_questions + behavioral_questions
 
-    # Create the questionnaire data
-    questionnaire_data = {
-        "questionnaire_id": questionnaire_id,
-        "title": "Initial Profile Assessment",
-        "description": """This questionnaire helps us understand
-        your personality traits, sleep preferences,
-        and behavioral patterns to create your psychological profile.""",
-        "questionnaire_type": "onboarding",
-        "questions": questions,
-        "created_at": now,
-        "updated_at": now,
-        "version": "1.0.0",
-        "is_active": True,
-        "estimated_duration_minutes": 10,
-        "tags": ["onboarding", "personality", "sleep", "behavior"],
-    }
-
-    # Insert the questionnaire into the database
-    op.execute(
-        """
-        INSERT INTO questionnaires (
-            questionnaire_id, title, description, questionnaire_type,
-            questions, created_at, updated_at, version, is_active,
-            estimated_duration_minutes, tags
-        ) VALUES (
-            :questionnaire_id, :title, :description, :questionnaire_type,
-            :questions, :created_at, :updated_at, :version, :is_active,
-            :estimated_duration_minutes, :tags
+    # Insert the questionnaire
+    op.get_bind().execute(
+        text(
+            """
+            INSERT INTO questionnaires (
+                questionnaire_id, title, description, type, questions,
+                created_at, updated_at, version, is_active,
+                estimated_duration_minutes, tags
+            ) VALUES (
+                :questionnaire_id, :title, :description, :type, :questions,
+                :created_at, :updated_at, :version, :is_active,
+                :estimated_duration_minutes, :tags
+            )
+            """
+        ).bindparams(
+            questionnaire_id=questionnaire_id,
+            title="Onboarding Psychological Profile Questionnaire",
+            description="""This questionnaire helps us understand your
+            personality traits, sleep preferences, and
+            behavioral patterns to provide personalized
+            recommendations.""",
+            type="onboarding",
+            questions=json.dumps(questions),
+            created_at=now,
+            updated_at=now,
+            version="1.0.0",
+            is_active=True,
+            estimated_duration_minutes=15,
+            tags=json.dumps(["onboarding", "personality", "sleep", "behavior"]),
         )
-        """,
-        {
-            "questionnaire_id": questionnaire_data["questionnaire_id"],
-            "title": questionnaire_data["title"],
-            "description": questionnaire_data["description"],
-            "questionnaire_type": questionnaire_data["questionnaire_type"],
-            "questions": json.dumps(questionnaire_data["questions"]),
-            "created_at": questionnaire_data["created_at"],
-            "updated_at": questionnaire_data["updated_at"],
-            "version": questionnaire_data["version"],
-            "is_active": questionnaire_data["is_active"],
-            "estimated_duration_minutes": questionnaire_data[
-                "estimated_duration_minutes"
-            ],
-            "tags": json.dumps(questionnaire_data["tags"]),
-        },
     )
 
     # Log the created questionnaire ID for reference

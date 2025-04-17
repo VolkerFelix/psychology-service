@@ -32,11 +32,11 @@ RUN pip install --upgrade pip && \
 # Copy the rest of the application
 COPY --chown=appuser:appuser . .
 
+# Make the entrypoint script executable
+RUN chmod +x /app/entrypoint.sh
+
 # Switch to non-root user
 USER appuser
 
 # Expose the port the app runs on
 EXPOSE 8002
-
-# Command to run the application
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8002"]
