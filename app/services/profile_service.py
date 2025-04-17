@@ -357,7 +357,12 @@ class ProfileService:
             )
 
         # Update completeness
-        self._update_profile_completeness(profile, {})
+        updates = {}  # type: ignore
+        self._update_profile_completeness(profile, updates)
+
+        # Apply the updates to the profile
+        if "profile_metadata" in updates:
+            profile["profile_metadata"].update(updates["profile_metadata"])
 
         # Save to storage - Make sure all data is serialized
         prepared_profile = self._prepare_for_db(profile)

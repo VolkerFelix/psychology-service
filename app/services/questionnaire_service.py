@@ -789,16 +789,23 @@ class QuestionnaireService:
                             return 0.5  # Medium value for medium bedtime
                         elif option_value == "late":
                             return 0.8  # High value for late bedtime
-            return 0.0
+                return 0.0
 
         elif question_type == "slider":
+            # Special handling for sleep_anxiety to ensure it doesn't exceed bounds
+            if any(dim == "sleep_anxiety" for dim in question.get("dimensions", [])):
+                # For sleep_anxiety, make sure we return a value between 0-1
+                # which will be scaled to 0-100 by _normalize_dimension_score
+                return min(float(value) / 10, 1.0)
+
+            # Normal handling for other slider questions
             # Normalize slider value to 0-1 range
             min_value = question.get("min_value", 0)
             max_value = question.get("max_value", 100)
             range_size = max_value - min_value
             if range_size <= 0:
                 return 0.0
-            return (float(value) - min_value) / range_size
+            return min((float(value) - min_value) / range_size, 1.0)
 
         elif question_type == "yes_no":
             # Assuming Yes=1, No=0
@@ -851,14 +858,13 @@ class QuestionnaireService:
             normalized = max(0, min(100, normalized))
 
         elif dimension == "sleep_anxiety":
-            # For anxiety, higher raw score means higher anxiety (0-10 scale)
-            if 0 <= normalized <= 100:
-                # Keep as is - already on 0-100 scale
-                pass
+            # For sleep_anxiety, ensure the value is in 0-10 range
+            # since the model expects sleep_anxiety_level to be 0-10
+            normalized = max(0, min(10, normalized * 10))
 
         elif dimension == "routine_consistency":
             # For routine consistency, use 0-10 scale and round to integer
-            normalized = round(max(0, min(10, normalized / 10)))
+            normalized = round(max(0, min(10, normalized * 10)))
 
         elif dimension in ["sleep_environment"]:
             # These might use different scales, normalize to 0-100
