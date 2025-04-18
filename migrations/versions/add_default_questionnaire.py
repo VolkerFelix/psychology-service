@@ -318,15 +318,15 @@ def upgrade() -> None:
         text(
             """
             INSERT INTO questionnaires (
-                questionnaire_id, title, description, type, questions,
+                questionnaire_id, title, description, questionnaire_type, questions,
                 created_at, updated_at, version, is_active,
                 estimated_duration_minutes, tags
             ) VALUES (
-                :questionnaire_id, :title, :description, :type, :questions,
+                :questionnaire_id, :title, :description, :questionnaire_type, :questions,
                 :created_at, :updated_at, :version, :is_active,
                 :estimated_duration_minutes, :tags
             )
-            """
+            """  # noqa: E501
         ).bindparams(
             questionnaire_id=questionnaire_id,
             title="Onboarding Psychological Profile Questionnaire",
@@ -334,7 +334,7 @@ def upgrade() -> None:
             personality traits, sleep preferences, and
             behavioral patterns to provide personalized
             recommendations.""",
-            type="onboarding",
+            questionnaire_type="onboarding",
             questions=json.dumps(questions),
             created_at=now,
             updated_at=now,

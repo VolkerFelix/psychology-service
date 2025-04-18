@@ -82,7 +82,10 @@ def upgrade() -> None:
 
     # Create indexes
     op.create_index(
-        op.f("ix_questionnaires_type"), "questionnaires", ["type"], unique=False
+        op.f("ix_questionnaires_type"),
+        "questionnaires",
+        ["questionnaire_type"],
+        unique=False,
     )
     op.create_index(
         op.f("ix_questionnaires_is_active"),
