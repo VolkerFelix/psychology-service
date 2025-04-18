@@ -59,7 +59,7 @@ def upgrade() -> None:
         sa.Column("questionnaire_id", sa.String(), nullable=False),
         sa.Column("title", sa.String(), nullable=False),
         sa.Column("description", sa.Text(), nullable=False),
-        sa.Column("type", sa.String(), nullable=False),
+        sa.Column("questionnaire_type", sa.String(), nullable=False),
         sa.Column("questions", JSON, nullable=False),
         sa.Column(
             "created_at",
