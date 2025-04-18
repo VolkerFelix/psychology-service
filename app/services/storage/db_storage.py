@@ -305,6 +305,10 @@ class DatabaseStorage:
         # Use provided URL or fall back to settings
         self.db_url = db_url or settings.DATABASE_URL
 
+        # Ensure db_url is not None
+        if self.db_url is None:
+            raise ValueError("Database URL cannot be None")
+
         # For testing with SQLite, use a static connection pool
         if self.db_url.startswith("sqlite"):
             self.engine = create_engine(

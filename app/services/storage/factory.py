@@ -2,6 +2,7 @@
 
 from typing import Optional, Union
 
+from app.config.settings import settings
 from app.services.storage.db_storage import DatabaseStorage
 
 
@@ -29,7 +30,9 @@ class StorageFactory:
             storage_type = "database"
 
         if storage_type == "database":
-            return DatabaseStorage(db_url=db_url)
+            # If no specific db_url is provided, use the one from settings
+            effective_db_url = db_url or settings.effective_database_url
+            return DatabaseStorage(db_url=effective_db_url)
         elif storage_type == "memory":
             # Create a DatabaseStorage with SQLite in-memory database
             return DatabaseStorage(db_url="sqlite:///:memory:")

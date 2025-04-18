@@ -35,8 +35,14 @@ COPY --chown=appuser:appuser . .
 # Make the entrypoint script executable
 RUN chmod +x /app/entrypoint.sh
 
+# Create data directory
+RUN mkdir -p /app/data && chown -R appuser:appuser /app/data
+
 # Switch to non-root user
 USER appuser
 
 # Expose the port the app runs on
 EXPOSE 8002
+
+# Use the entrypoint script
+ENTRYPOINT ["/app/entrypoint.sh"]

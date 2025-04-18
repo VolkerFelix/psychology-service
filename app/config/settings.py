@@ -1,13 +1,21 @@
 """Configuration settings for the Psychology Profiling Microservice."""
 
 import os
-from typing import List
+from enum import Enum
+from typing import List, Optional
 
 from dotenv import load_dotenv
 from pydantic_settings import BaseSettings
 
 # Load environment variables from .env file
 load_dotenv()
+
+
+class DatabaseBackend(str, Enum):
+    """Database backend options."""
+
+    POSTGRES = "postgres"
+    SQLITE = "sqlite"
 
 
 class Settings(BaseSettings):
@@ -29,9 +37,14 @@ class Settings(BaseSettings):
     ]
 
     # Database settings
-    DATABASE_URL: str = os.getenv(
-        "DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/psychology_data"
-    )
+    DATABASE_BACKEND: str = os.getenv("DATABASE_BACKEND", "postgres")
+    DATABASE_URL: Optional[str] = os.getenv("DATABASE_URL")
+    SQLITE_DB_PATH: str = os.getenv("SQLITE_DB_PATH", "psychology_data.db")
+
+    # PostgreSQL connection parameters (used by entrypoint script)
+    DB_HOST: str = os.getenv("DB_HOST", "postgres")
+    DB_PORT: str = os.getenv("DB_PORT", "5432")
+    DB_USER: str = os.getenv("DB_USER", "postgres")
 
     # Sleep Data Service
     PSYCHOLOGY_SERVICE_URL: str = os.getenv(
@@ -66,7 +79,32 @@ class Settings(BaseSettings):
         "env_file": ".env",
         "env_file_encoding": "utf-8",
         "case_sensitive": True,
+        "extra": "ignore",  # Allow extra attributes
     }
+
+    def get_database_url(self) -> str:
+        """
+        Get the database URL based on the configured backend.
+
+        Returns:
+            Database connection URL
+        """
+        if self.DATABASE_BACKEND.lower() == DatabaseBackend.POSTGRES:
+            # Use provided PostgreSQL URL or default
+            return (
+                self.DATABASE_URL
+                or f"postgresql://{self.DB_USER}:postgres@{self.DB_HOST}:{self.DB_PORT}/psychology_data"  # noqa: E501
+            )
+        else:
+            # Use SQLite
+            sqlite_path = os.path.abspath(self.SQLITE_DB_PATH)
+            os.makedirs(os.path.dirname(sqlite_path), exist_ok=True)
+            return f"sqlite:///{sqlite_path}"
+
+    @property
+    def effective_database_url(self) -> str:
+        """Effective database URL property."""
+        return self.get_database_url()
 
 
 # Create an instance of the settings
