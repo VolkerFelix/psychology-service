@@ -6,10 +6,16 @@ services:
     environment:
       - API_HOST=0.0.0.0
       - API_PORT=8002
+      - DATABASE_BACKEND=postgres
       - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/psychology_data
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
       - LOG_LEVEL=INFO
       - DEBUG=False
-      - PERSONALITY_SERVICE_URL=http://personality-service:8001/api
+      - PSYCHOLOGY_SERVICE_URL=http://personality-service:8001/api
+    volumes:
+      - ./data:/app/data
     entrypoint: ["/app/entrypoint.sh"]
     restart: unless-stopped
     depends_on:
@@ -20,7 +26,7 @@ services:
   postgres:
     image: postgres:14
     ports:
-      - "5432:5432"  # Using 5433 to avoid conflict with sleep service's postgres
+      - "5432:5432"
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
@@ -39,7 +45,7 @@ services:
   pgadmin:
     image: dpage/pgadmin4
     ports:
-      - "5051:80"  # Using 5051 to avoid conflict with sleep service's pgadmin
+      - "5051:80"
     environment:
       - PGADMIN_DEFAULT_EMAIL=admin@psychologyservice.com
       - PGADMIN_DEFAULT_PASSWORD=admin
