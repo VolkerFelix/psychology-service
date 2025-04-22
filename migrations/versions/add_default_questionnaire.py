@@ -43,15 +43,15 @@ def upgrade() -> None:
         text(
             """
             INSERT INTO questionnaires (
-                questionnaire_id, title, description, questionnaire_type,
-                questions, created_at, updated_at, version, is_active,
+                questionnaire_id, title, description, questionnaire_type, questions,
+                created_at, updated_at, version, is_active,
                 estimated_duration_minutes, tags
             ) VALUES (
-                :questionnaire_id, :title, :description, :questionnaire_type,
-                :questions, :created_at, :updated_at, :version, :is_active,
+                :questionnaire_id, :title, :description, :questionnaire_type, :questions,
+                :created_at, :updated_at, :version, :is_active,
                 :estimated_duration_minutes, :tags
             )
-            """
+            """  # noqa: E501
         ).bindparams(
             questionnaire_id=onboarding_id,
             title="Onboarding Psychological Profile Questionnaire",
@@ -78,20 +78,19 @@ def upgrade() -> None:
         text(
             """
             INSERT INTO questionnaires (
-                questionnaire_id, title, description, questionnaire_type,
-                questions, created_at, updated_at, version, is_active,
+                questionnaire_id, title, description, questionnaire_type, questions,
+                created_at, updated_at, version, is_active,
                 estimated_duration_minutes, tags
             ) VALUES (
-                :questionnaire_id, :title, :description, :questionnaire_type,
-                :questions, :created_at, :updated_at, :version, :is_active,
+                :questionnaire_id, :title, :description, :questionnaire_type, :questions,
+                :created_at, :updated_at, :version, :is_active,
                 :estimated_duration_minutes, :tags
             )
-            """
+            """  # noqa: E501
         ).bindparams(
             questionnaire_id=personality_id,
             title="Personality Assessment",
-            description="""This questionnaire evaluates your
-            personality traits based on the Big Five model.""",
+            description="This questionnaire evaluates your personality traits based on the Big Five model.",  # noqa: E501
             questionnaire_type="personality",
             questions=json.dumps(personality_questions),
             created_at=now,
@@ -109,20 +108,19 @@ def upgrade() -> None:
         text(
             """
             INSERT INTO questionnaires (
-                questionnaire_id, title, description, questionnaire_type,
-                questions, created_at, updated_at, version, is_active,
+                questionnaire_id, title, description, questionnaire_type, questions,
+                created_at, updated_at, version, is_active,
                 estimated_duration_minutes, tags
             ) VALUES (
-                :questionnaire_id, :title, :description, :questionnaire_type,
-                :questions, :created_at, :updated_at, :version, :is_active,
+                :questionnaire_id, :title, :description, :questionnaire_type, :questions,
+                :created_at, :updated_at, :version, :is_active,
                 :estimated_duration_minutes, :tags
             )
-            """
+            """  # noqa: E501
         ).bindparams(
             questionnaire_id=sleep_id,
             title="Sleep Habits Assessment",
-            description="""This questionnaire evaluates your
-            sleep preferences and habits.""",
+            description="This questionnaire evaluates your sleep preferences and habits.",  # noqa: E501
             questionnaire_type="sleep_habits",
             questions=json.dumps(sleep_questions),
             created_at=now,
@@ -131,7 +129,7 @@ def upgrade() -> None:
             is_active=True,
             estimated_duration_minutes=8,
             tags=json.dumps(["sleep", "chronotype"]),
-        )
+        )  # noqa: E501
     )
 
     # Behavioral questionnaire
@@ -140,15 +138,15 @@ def upgrade() -> None:
         text(
             """
             INSERT INTO questionnaires (
-                questionnaire_id, title, description, questionnaire_type,
-                questions, created_at, updated_at, version, is_active,
+                questionnaire_id, title, description, questionnaire_type, questions,
+                created_at, updated_at, version, is_active,
                 estimated_duration_minutes, tags
             ) VALUES (
-                :questionnaire_id, :title, :description, :questionnaire_type,
-                :questions, :created_at, :updated_at, :version, :is_active,
+                :questionnaire_id, :title, :description, :questionnaire_type, :questions,
+                :created_at, :updated_at, :version, :is_active,
                 :estimated_duration_minutes, :tags
             )
-            """
+            """  # noqa: E501
         ).bindparams(
             questionnaire_id=behavioral_id,
             title="Behavioral Patterns Assessment",
@@ -270,8 +268,7 @@ def get_sleep_questions():
         {
             "question_id": "sleep_chronotype",
             "text": "When do you naturally prefer to go to sleep?",
-            "description": """Select the time that best matches your
-            preference, not when you actually go to bed""",
+            "description": "Select the time that best matches your preference, not when you actually go to bed",  # noqa: E501
             "question_type": "multiple_choice",
             "category": "sleep",
             "dimensions": ["chronotype"],
@@ -351,7 +348,9 @@ def get_sleep_questions():
             "description": "Select all that apply",
             "question_type": "checkbox",
             "category": "sleep",
-            "dimensions": ["relaxation_techniques"],
+            "dimensions": [
+                "general"
+            ],  # Changed from "relaxation_techniques" to "general"
             "options": [
                 {"option_id": "reading", "text": "Reading", "value": "reading"},
                 {
@@ -379,7 +378,7 @@ def get_sleep_questions():
             "required": True,
             "weight": 1.0,
         },
-    ]
+    ]  # noqa: E501
 
 
 def get_behavioral_questions():
@@ -425,8 +424,7 @@ def get_behavioral_questions():
         {
             "question_id": "routine_consistency",
             "text": "How consistent is your daily routine?",
-            "description": """Rate on a scale from 0 (completely variable)
-            to 10 (highly consistent)""",
+            "description": "Rate on a scale from 0 (completely variable) to 10 (highly consistent)",  # noqa: E501
             "question_type": "slider",
             "category": "behavior",
             "dimensions": ["routine_consistency"],
@@ -442,7 +440,9 @@ def get_behavioral_questions():
             "description": "Select the number that best represents your usual habits",
             "question_type": "slider",
             "category": "behavior",
-            "dimensions": ["exercise_frequency"],
+            "dimensions": [
+                "general"
+            ],  # Changed to "general" as "exercise_frequency" is not in the enum
             "min_value": 0,
             "max_value": 7,
             "step": 1,
@@ -452,11 +452,10 @@ def get_behavioral_questions():
         {
             "question_id": "social_preference",
             "text": "How much do you prefer social activities before bedtime?",
-            "description": """Rate on a scale from 0 (prefer solitude)
-            to 10 (prefer socializing)""",
+            "description": "Rate on a scale from 0 (prefer solitude) to 10 (prefer socializing)",  # noqa: E501
             "question_type": "slider",
             "category": "behavior",
-            "dimensions": ["social_activity_preference"],
+            "dimensions": ["activity_preference"],  # This matches the enum value
             "min_value": 0,
             "max_value": 10,
             "step": 1,
@@ -465,16 +464,15 @@ def get_behavioral_questions():
         },
         {
             "question_id": "screen_time",
-            "text": """How many minutes do you typically spend
-            on screens right before bed?""",
+            "text": "How many minutes do you typically spend on screens right before bed?",  # noqa: E501
             "description": "Enter approximate time in minutes",
             "question_type": "slider",
             "category": "behavior",
-            "dimensions": ["screen_time_before_bed"],
+            "dimensions": ["screen_time"],
             "min_value": 0,
             "max_value": 120,
             "step": 5,
             "required": True,
             "weight": 1.0,
         },
-    ]
+    ]  # noqa: E501
