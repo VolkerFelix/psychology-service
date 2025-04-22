@@ -457,6 +457,13 @@ class ProfileService:
                     else:
                         # If not numeric, use as is (should be a string)
                         profile[category][field] = score
+                elif field == "social_activity_preference":
+                    # Ensure it's within the 0-10 range
+                    if isinstance(score, (int, float)):
+                        profile[category][field] = min(10, max(0, score))
+                    else:
+                        # If not numeric, use as is (should be a string)
+                        profile[category][field] = score
                 else:
                     # For numeric fields, just assign the score
                     profile[category][field] = score
