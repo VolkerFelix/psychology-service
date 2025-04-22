@@ -1,12 +1,13 @@
-"""Add default onboarding questionnaire.
+"""Add questionnaires for onboarding and visualization.
 
 Revision ID: 003
 Revises: 002
 Create Date: 2025-04-17 10:00:00.000000
 
-This migration adds a default questionnaire that
-will be used during the onboarding process
-to collect initial psychological profile data from users.
+This migration adds:
+1. A combined onboarding questionnaire
+2. Individual questionnaires for each type (personality, sleep_habits, behavioral)
+to support both the onboarding process and visualization requirements.
 """
 
 import json
@@ -24,13 +25,178 @@ depends_on = None
 
 
 def upgrade() -> None:
-    """Add default onboarding questionnaire."""
-    # Generate a UUID for the questionnaire
-    questionnaire_id = str(uuid.uuid4())
+    """Add questionnaires for onboarding and visualization."""
+    # Get current time for timestamps
     now = datetime.now().isoformat()
 
-    # Create personality trait questions
-    personality_questions = [
+    # Create question sets
+    personality_questions = get_personality_questions()
+    sleep_questions = get_sleep_questions()
+    behavioral_questions = get_behavioral_questions()
+
+    # Combined questions for the comprehensive onboarding questionnaire
+    all_questions = personality_questions + sleep_questions + behavioral_questions
+
+    # ---------- Create the onboarding questionnaire (combined) ----------
+    onboarding_id = str(uuid.uuid4())
+    op.get_bind().execute(
+        text(
+            """
+            INSERT INTO questionnaires (
+                questionnaire_id, title, description, questionnaire_type,
+                questions, created_at, updated_at, version, is_active,
+                estimated_duration_minutes, tags
+            ) VALUES (
+                :questionnaire_id, :title, :description, :questionnaire_type,
+                :questions, :created_at, :updated_at, :version, :is_active,
+                :estimated_duration_minutes, :tags
+            )
+            """
+        ).bindparams(
+            questionnaire_id=onboarding_id,
+            title="Onboarding Psychological Profile Questionnaire",
+            description="""This questionnaire helps us understand your
+            personality traits, sleep preferences, and
+            behavioral patterns to provide personalized
+            recommendations.""",
+            questionnaire_type="onboarding",
+            questions=json.dumps(all_questions),
+            created_at=now,
+            updated_at=now,
+            version="1.0.0",
+            is_active=True,
+            estimated_duration_minutes=15,
+            tags=json.dumps(["onboarding", "personality", "sleep", "behavior"]),
+        )
+    )
+
+    # ---------- Create individual questionnaires for visualization app ----------
+
+    # Personality questionnaire
+    personality_id = str(uuid.uuid4())
+    op.get_bind().execute(
+        text(
+            """
+            INSERT INTO questionnaires (
+                questionnaire_id, title, description, questionnaire_type,
+                questions, created_at, updated_at, version, is_active,
+                estimated_duration_minutes, tags
+            ) VALUES (
+                :questionnaire_id, :title, :description, :questionnaire_type,
+                :questions, :created_at, :updated_at, :version, :is_active,
+                :estimated_duration_minutes, :tags
+            )
+            """
+        ).bindparams(
+            questionnaire_id=personality_id,
+            title="Personality Assessment",
+            description="""This questionnaire evaluates your
+            personality traits based on the Big Five model.""",
+            questionnaire_type="personality",
+            questions=json.dumps(personality_questions),
+            created_at=now,
+            updated_at=now,
+            version="1.0.0",
+            is_active=True,
+            estimated_duration_minutes=10,
+            tags=json.dumps(["personality", "big five"]),
+        )
+    )
+
+    # Sleep questionnaire
+    sleep_id = str(uuid.uuid4())
+    op.get_bind().execute(
+        text(
+            """
+            INSERT INTO questionnaires (
+                questionnaire_id, title, description, questionnaire_type,
+                questions, created_at, updated_at, version, is_active,
+                estimated_duration_minutes, tags
+            ) VALUES (
+                :questionnaire_id, :title, :description, :questionnaire_type,
+                :questions, :created_at, :updated_at, :version, :is_active,
+                :estimated_duration_minutes, :tags
+            )
+            """
+        ).bindparams(
+            questionnaire_id=sleep_id,
+            title="Sleep Habits Assessment",
+            description="""This questionnaire evaluates your
+            sleep preferences and habits.""",
+            questionnaire_type="sleep_habits",
+            questions=json.dumps(sleep_questions),
+            created_at=now,
+            updated_at=now,
+            version="1.0.0",
+            is_active=True,
+            estimated_duration_minutes=8,
+            tags=json.dumps(["sleep", "chronotype"]),
+        )
+    )
+
+    # Behavioral questionnaire
+    behavioral_id = str(uuid.uuid4())
+    op.get_bind().execute(
+        text(
+            """
+            INSERT INTO questionnaires (
+                questionnaire_id, title, description, questionnaire_type,
+                questions, created_at, updated_at, version, is_active,
+                estimated_duration_minutes, tags
+            ) VALUES (
+                :questionnaire_id, :title, :description, :questionnaire_type,
+                :questions, :created_at, :updated_at, :version, :is_active,
+                :estimated_duration_minutes, :tags
+            )
+            """
+        ).bindparams(
+            questionnaire_id=behavioral_id,
+            title="Behavioral Patterns Assessment",
+            description="This questionnaire evaluates your daily behavioral patterns.",
+            questionnaire_type="behavioral",
+            questions=json.dumps(behavioral_questions),
+            created_at=now,
+            updated_at=now,
+            version="1.0.0",
+            is_active=True,
+            estimated_duration_minutes=7,
+            tags=json.dumps(["behavior", "habits"]),
+        )
+    )
+
+    # Log the created questionnaire IDs for reference
+    print(f"Created onboarding questionnaire with ID: {onboarding_id}")
+    print(f"Created personality questionnaire with ID: {personality_id}")
+    print(f"Created sleep questionnaire with ID: {sleep_id}")
+    print(f"Created behavioral questionnaire with ID: {behavioral_id}")
+
+
+def downgrade() -> None:
+    """Remove the added questionnaires."""
+    # Delete all onboarding questionnaires
+    op.execute(
+        """
+        DELETE FROM questionnaires
+        WHERE questionnaire_type = 'onboarding' AND
+        title = 'Onboarding Psychological Profile Questionnaire'
+        """
+    )
+
+    # Delete individual questionnaires
+    op.get_bind().execute(
+        text(
+            """
+            DELETE FROM questionnaires
+            WHERE questionnaire_type IN ('personality', 'sleep_habits', 'behavioral')
+            AND title IN ('Personality Assessment', 'Sleep Habits Assessment', 'Behavioral Patterns Assessment')
+            """  # noqa: E501
+        )
+    )
+
+
+def get_personality_questions():
+    """Get questions for personality assessment."""
+    return [
         {
             "question_id": f"personality_{i}",
             "text": question["text"],
@@ -97,13 +263,15 @@ def upgrade() -> None:
         )
     ]
 
-    # Create sleep preference questions
-    sleep_questions = [
+
+def get_sleep_questions():
+    """Get questions for sleep assessment."""
+    return [
         {
             "question_id": "sleep_chronotype",
             "text": "When do you naturally prefer to go to sleep?",
-            "description": """Select the time that best matches your preference,
-            not when you actually go to bed""",
+            "description": """Select the time that best matches your
+            preference, not when you actually go to bed""",
             "question_type": "multiple_choice",
             "category": "sleep",
             "dimensions": ["chronotype"],
@@ -213,8 +381,10 @@ def upgrade() -> None:
         },
     ]
 
-    # Create behavioral pattern questions
-    behavioral_questions = [
+
+def get_behavioral_questions():
+    """Get questions for behavioral assessment."""
+    return [
         {
             "question_id": "stress_response",
             "text": "How do you typically respond to stress?",
@@ -269,8 +439,7 @@ def upgrade() -> None:
         {
             "question_id": "exercise_frequency",
             "text": "How many days per week do you typically exercise?",
-            "description": """Select the number that best
-            represents your usual habits""",
+            "description": "Select the number that best represents your usual habits",
             "question_type": "slider",
             "category": "behavior",
             "dimensions": ["exercise_frequency"],
@@ -296,8 +465,8 @@ def upgrade() -> None:
         },
         {
             "question_id": "screen_time",
-            "text": """How many minutes do you typically
-            spend on screens right before bed?""",
+            "text": """How many minutes do you typically spend
+            on screens right before bed?""",
             "description": "Enter approximate time in minutes",
             "question_type": "slider",
             "category": "behavior",
@@ -309,54 +478,3 @@ def upgrade() -> None:
             "weight": 1.0,
         },
     ]
-
-    # Combine all questions
-    questions = personality_questions + sleep_questions + behavioral_questions
-
-    # Insert the questionnaire
-    op.get_bind().execute(
-        text(
-            """
-            INSERT INTO questionnaires (
-                questionnaire_id, title, description, questionnaire_type, questions,
-                created_at, updated_at, version, is_active,
-                estimated_duration_minutes, tags
-            ) VALUES (
-                :questionnaire_id, :title, :description, :questionnaire_type, :questions,
-                :created_at, :updated_at, :version, :is_active,
-                :estimated_duration_minutes, :tags
-            )
-            """  # noqa: E501
-        ).bindparams(
-            questionnaire_id=questionnaire_id,
-            title="Onboarding Psychological Profile Questionnaire",
-            description="""This questionnaire helps us understand your
-            personality traits, sleep preferences, and
-            behavioral patterns to provide personalized
-            recommendations.""",
-            questionnaire_type="onboarding",
-            questions=json.dumps(questions),
-            created_at=now,
-            updated_at=now,
-            version="1.0.0",
-            is_active=True,
-            estimated_duration_minutes=15,
-            tags=json.dumps(["onboarding", "personality", "sleep", "behavior"]),
-        )
-    )
-
-    # Log the created questionnaire ID for reference
-    print(f"Created default onboarding questionnaire with ID: {questionnaire_id}")
-
-
-def downgrade() -> None:
-    """Remove the default onboarding questionnaire."""
-    # Delete all onboarding questionnaires
-    # This assumes there might be multiple onboarding
-    # questionnaires and removes them all
-    op.execute(
-        """
-        DELETE FROM questionnaires
-        WHERE questionnaire_type = 'onboarding' AND title = 'Initial Profile Assessment'
-        """
-    )
