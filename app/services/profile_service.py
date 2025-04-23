@@ -5,6 +5,8 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
+from loguru import logger
+
 from app.models.profile_models import (
     BehavioralPatterns,
     PersonalityTraits,
@@ -341,6 +343,38 @@ class ProfileService:
 
         # Update specific trait components based on dimensions in results
         self._update_profile_from_scores(profile, questionnaire_results)
+
+        # Handle special fields directly
+        if "special_fields" in questionnaire_results:
+            special_fields = questionnaire_results["special_fields"]
+
+            # Make sure sleep_preferences exists
+            if "sleep_preferences" not in profile:
+                profile["sleep_preferences"] = {}
+
+            # Update ideal_bedtime
+            if "ideal_bedtime" in special_fields and special_fields["ideal_bedtime"]:
+                profile["sleep_preferences"]["ideal_bedtime"] = special_fields[
+                    "ideal_bedtime"
+                ]
+                logger.info(
+                    f"Updated ideal_bedtime to {special_fields['ideal_bedtime']}"
+                )
+
+            # Update relaxation_techniques
+            if "relaxation_techniques" in special_fields:
+                techniques = special_fields["relaxation_techniques"]
+                # Handle empty string case
+                if isinstance(techniques, str) and not techniques:
+                    techniques = []
+                # Handle single string case
+                elif isinstance(techniques, str) and "," in techniques:
+                    techniques = techniques.split(",")
+                elif isinstance(techniques, str):
+                    techniques = [techniques]
+
+                profile["sleep_preferences"]["relaxation_techniques"] = techniques
+                logger.info(f"Updated relaxation_techniques to {techniques}")
 
         # Update metadata
         if "profile_metadata" not in profile:
