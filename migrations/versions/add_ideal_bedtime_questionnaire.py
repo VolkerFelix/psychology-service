@@ -39,7 +39,14 @@ def upgrade() -> None:
 
     for questionnaire in questionnaires:
         questionnaire_id = questionnaire[0]
-        questions = json.loads(questionnaire[1])
+
+        # Check if questions is already a list or if it's a JSON string
+        if isinstance(questionnaire[1], str):
+            questions = json.loads(questionnaire[1])
+        else:
+            # It's already a list or dict
+            questions = questionnaire[1]
+
         questionnaire[2]
 
         # Check if we have sleep section questions
@@ -111,11 +118,13 @@ def upgrade() -> None:
                         ]
                         question["options"] = options
                         print(
-                            f"""Updated bedtime_routine options
-                            in questionnaire {questionnaire_id}"""
+                            f"Updated bedtime_routine options in questionnaire {questionnaire_id}"  # noqa: E501
                         )
 
             # Update the questionnaire with the new questions
+            # Convert questions back to JSON for storage
+            questions_json = json.dumps(questions)
+
             op.get_bind().execute(
                 text(
                     """
@@ -124,7 +133,7 @@ def upgrade() -> None:
                     WHERE questionnaire_id = :questionnaire_id
                     """
                 ).bindparams(
-                    questions=json.dumps(questions),
+                    questions=questions_json,
                     updated_at=now,
                     questionnaire_id=questionnaire_id,
                 )
@@ -150,11 +159,21 @@ def downgrade() -> None:
 
     for questionnaire in questionnaires:
         questionnaire_id = questionnaire[0]
-        questions = json.loads(questionnaire[1])
+
+        # Check if questions is already a list or if it's a JSON string
+        if isinstance(questionnaire[1], str):
+            questions = json.loads(questionnaire[1])
+        else:
+            # It's already a list or dict
+            questions = questionnaire[1]
+
         questionnaire[2]
 
         # Remove ideal_bedtime question if it exists
         questions = [q for q in questions if q.get("question_id") != "ideal_bedtime"]
+
+        # Convert questions back to JSON for storage
+        questions_json = json.dumps(questions)
 
         # Update the questionnaire
         op.get_bind().execute(
@@ -165,7 +184,7 @@ def downgrade() -> None:
                 WHERE questionnaire_id = :questionnaire_id
                 """
             ).bindparams(
-                questions=json.dumps(questions),
+                questions=questions_json,
                 updated_at=now,
                 questionnaire_id=questionnaire_id,
             )
