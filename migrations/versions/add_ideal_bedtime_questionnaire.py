@@ -59,14 +59,16 @@ def upgrade() -> None:
             )
 
             if not has_ideal_bedtime:
-                # Add ideal_bedtime question
+                # Add ideal_bedtime question with valid values
                 ideal_bedtime_question = {
                     "question_id": "ideal_bedtime",
                     "text": "What is your ideal bedtime?",
                     "description": "Select your preferred time to go to bed",
-                    "question_type": "time",
+                    "question_type": "text",
                     "category": "sleep",
-                    "dimensions": ["sleep_preferences"],
+                    "dimensions": [
+                        "general"
+                    ],  # Changed from 'sleep_preferences' to 'general' which is valid
                     "required": False,
                     "weight": 1.0,
                 }

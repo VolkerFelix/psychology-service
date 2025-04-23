@@ -5,8 +5,6 @@ import uuid
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 
-from loguru import logger
-
 from app.config.settings import settings
 from app.models.questionnaire_models import (
     Answer,
@@ -596,42 +594,31 @@ class QuestionnaireService:
         if not success:
             raise Exception("Failed to save completed user questionnaire")
 
-        # Log raw scores for debugging
-        logger.info(f"Raw scores for user questionnaire {user_questionnaire_id}:")
-        logger.info(score_results.get("raw_scores", {}))
-
-        # Make sure special fields are handled correctly
+        # Create profile update data
+        # Extract specific fields for direct profile updates
         profile_updates = {
             "scores": score_results.get("raw_scores", {}),
             "dimension_scores": score_results.get("dimension_scores", {}),
             "questions_answered": len(user_questionnaire.get("answers", [])),
+            "sleep_preferences": {},
         }
 
-        # Extract special fields
+        # Handle ideal_bedtime field
         raw_scores = score_results.get("raw_scores", {})
-        profile_updates["special_fields"] = {}
-
-        # Handle ideal_bedtime
         if "ideal_bedtime" in raw_scores:
-            profile_updates["special_fields"]["ideal_bedtime"] = raw_scores[
+            profile_updates["sleep_preferences"]["ideal_bedtime"] = raw_scores[
                 "ideal_bedtime"
             ]
-            logger.info(f"Setting ideal_bedtime: {raw_scores['ideal_bedtime']}")
 
-        # Handle relaxation_techniques
+        # Handle relaxation_techniques field
         if "relaxation_techniques" in raw_scores:
-            profile_updates["special_fields"]["relaxation_techniques"] = raw_scores[
+            profile_updates["sleep_preferences"]["relaxation_techniques"] = raw_scores[
                 "relaxation_techniques"
             ]
-            logger.info(
-                f"Setting relaxation_techniques: {raw_scores['relaxation_techniques']}"
-            )
 
         # Update profile with results
-        user_id = user_questionnaire["user_id"]
-        logger.info(f"Updating profile for user {user_id} with questionnaire results")
         self.profile_service.update_profile_from_questionnaire(
-            user_id=user_id, questionnaire_results=profile_updates
+            user_id=user_questionnaire["user_id"], questionnaire_results=profile_updates
         )
 
         # Return completed user questionnaire
@@ -721,13 +708,25 @@ class QuestionnaireService:
         dimension_scores = {}
         dimension_counts = {}
 
-        logger.info(f"Processing {len(answers)} answers for scoring")
-        logger.info(f"Available questions: {list(questions.keys())}")
+        # Special field handling
+        # Check for ideal_bedtime field
+        if "ideal_bedtime" in answers:
+            raw_scores["ideal_bedtime"] = answers["ideal_bedtime"]
+
+        # Check for bedtime_routine (relaxation techniques)
+        if "bedtime_routine" in answers:
+            bedtime_value = answers["bedtime_routine"]
+            if isinstance(bedtime_value, list):
+                raw_scores["relaxation_techniques"] = bedtime_value
+            elif isinstance(bedtime_value, str) and "," in bedtime_value:
+                raw_scores["relaxation_techniques"] = bedtime_value.split(",")
+            elif bedtime_value:  # Single value
+                raw_scores["relaxation_techniques"] = [bedtime_value]
+            else:  # Empty value
+                raw_scores["relaxation_techniques"] = []
 
         # Process each answered question
         for question_id, value in answers.items():
-            logger.info(f"Processing answer for question {question_id}: {value}")
-
             if question_id in questions:
                 question = questions[question_id]
 
@@ -747,28 +746,6 @@ class QuestionnaireService:
                         if hasattr(dimension, "value")
                         else str(dimension).lower()
                     )
-
-                    logger.info(
-                        f"""Processing dimension {dimension_str}
-                        for question {question_id}"""
-                    )
-
-                    # Special handling for specific fields
-                    if dimension_str == "sleep_preferences":
-                        # Handle ideal_bedtime directly
-                        if question_id == "ideal_bedtime":
-                            raw_scores["ideal_bedtime"] = value
-
-                        # Handle relaxation techniques
-                        if question_id == "bedtime_routine":
-                            if isinstance(value, list):
-                                raw_scores["relaxation_techniques"] = value
-                            elif isinstance(value, str) and "," in value:
-                                raw_scores["relaxation_techniques"] = value.split(",")
-                            elif value:  # Single value
-                                raw_scores["relaxation_techniques"] = [value]
-                            else:  # Empty value
-                                raw_scores["relaxation_techniques"] = []
 
                     # Get score based on question type
                     score = self._calculate_question_score(question, value)
@@ -796,7 +773,7 @@ class QuestionnaireService:
                     dimension, avg_score
                 )
 
-        # Return results with raw scores for all fields
+        # Return results
         return {
             "raw_scores": raw_scores,
             "dimension_scores": processed_dimensions,
